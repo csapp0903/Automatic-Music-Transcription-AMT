@@ -89,6 +89,8 @@ cd Automatic-Music-Transcription-AMT
 
 或直接在 Android Studio 中点击 "Run" 按钮。
 
+**注意**: 项目已配置阿里云镜像加速，中国大陆地区用户可以快速下载依赖。镜像配置见 `settings.gradle.kts` 和 `build.gradle.kts`。
+
 ## 使用说明
 
 1. **选择音频源**
