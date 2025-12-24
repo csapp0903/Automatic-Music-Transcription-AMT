@@ -1,46 +1,52 @@
 package com.musictranscription.app.service
 
 import android.content.Context
+import android.util.Log
+import com.arthenica.mobileffmpeg.Config
+import com.arthenica.mobileffmpeg.FFmpeg
+import be.tarsos.dsp.AudioDispatcher
+import be.tarsos.dsp.AudioEvent
+import be.tarsos.dsp.io.TarsosDSPAudioFormat
+import be.tarsos.dsp.io.TarsosDSPAudioInputStream
+import be.tarsos.dsp.pitch.PitchDetectionHandler
+import be.tarsos.dsp.pitch.PitchDetectionResult
+import be.tarsos.dsp.pitch.PitchProcessor
 import com.musictranscription.app.model.MusicScore
 import com.musictranscription.app.model.Note
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.math.abs
-import kotlin.math.log2
-import kotlin.math.pow
-import kotlin.math.round
+import java.io.FileInputStream
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.ln
+import kotlin.math.roundToInt
 
-/**
- * Service for transcribing audio to musical notes
- * This is a simplified implementation using basic pitch detection.
- * For production use, consider integrating ML models like Basic Pitch or Onsets and Frames.
- */
 class AudioTranscriber(private val context: Context) {
 
-    /**
-     * Transcribe audio file to music score
-     * @param audioFile The audio file to transcribe
-     * @param progressCallback Callback for transcription progress (0.0 to 1.0)
-     * @return MusicScore containing detected notes
-     */
+    companion object {
+        private const val TAG = "AudioTranscriber"
+    }
+
     suspend fun transcribe(
         audioFile: File,
         progressCallback: ((Float) -> Unit)? = null
     ): Result<MusicScore> = withContext(Dispatchers.IO) {
         try {
-            progressCallback?.invoke(0.1f)
+            progressCallback?.invoke(0.05f)
+            Log.d(TAG, "开始处理文件: ${audioFile.name}")
 
-            // Convert audio to WAV if needed
+            // 1. 格式转换 (MP3 -> WAV)
+            // 这一步确保文件是标准的 PCM 16bit, 44100Hz, 单声道
             val wavFile = convertToWav(audioFile)
-            progressCallback?.invoke(0.3f)
+            progressCallback?.invoke(0.2f)
 
-            // Analyze audio and detect notes
-            // This is a simplified implementation
-            // In production, you would use a trained ML model
-            val notes = analyzeAudioSimplified(wavFile, progressCallback)
-            progressCallback?.invoke(0.9f)
+            // 2. 音频分析 (使用自定义流读取，防止 TarsosDSP 崩溃)
+            val notes = analyzeAudioWithTarsos(wavFile, progressCallback)
+            Log.d(TAG, "分析完成，检测到 ${notes.size} 个音符")
 
+            // 3. 生成曲谱对象
             val score = MusicScore(
                 notes = notes,
                 tempo = 120,
@@ -51,90 +57,124 @@ class AudioTranscriber(private val context: Context) {
             progressCallback?.invoke(1.0f)
             Result.success(score)
         } catch (e: Exception) {
+            Log.e(TAG, "转谱失败", e)
             Result.failure(e)
         }
     }
 
-    /**
-     * Convert audio file to WAV format using FFmpeg
-     */
-    private suspend fun convertToWav(audioFile: File): File = withContext(Dispatchers.IO) {
-        // For simplicity, if already WAV, return as is
-        if (audioFile.extension.equals("wav", ignoreCase = true)) {
-            return@withContext audioFile
-        }
-
+    private suspend fun convertToWav(inputFile: File): File = withContext(Dispatchers.IO) {
         val outputFile = File(context.cacheDir, "converted_${System.currentTimeMillis()}.wav")
+        // 强制转换为 PCM 16bit (s16le), 44100Hz, 单声道 (ac 1)
+        // 这些参数必须与下面的 TarsosDSPAudioFormat 匹配
+        val cmd = "-y -i \"${inputFile.absolutePath}\" -vn -acodec pcm_s16le -ar 44100 -ac 1 \"${outputFile.absolutePath}\""
 
-        // In production, use FFmpeg library to convert
-        // For this demo, we'll simulate the conversion
-        // You would use: FFmpeg.execute("-i ${audioFile.path} -ar 22050 -ac 1 ${outputFile.path}")
+        Log.d(TAG, "执行 FFmpeg: $cmd")
+        val rc = FFmpeg.execute(cmd)
 
-        // For demo purposes, copy the file
-        audioFile.copyTo(outputFile, overwrite = true)
-        outputFile
+        if (rc == Config.RETURN_CODE_SUCCESS) {
+            return@withContext outputFile
+        } else {
+            throw Exception("FFmpeg 转换失败，错误码: $rc")
+        }
     }
 
-    /**
-     * Simplified audio analysis
-     * In production, replace this with a trained ML model like Basic Pitch
-     */
-    private fun analyzeAudioSimplified(
+    private fun analyzeAudioWithTarsos(
         wavFile: File,
         progressCallback: ((Float) -> Unit)?
     ): List<Note> {
-        // This is a DEMO implementation that generates sample notes
-        // In production, use actual audio analysis with ML models
+        val detectedNotes = mutableListOf<Note>()
 
-        val notes = mutableListOf<Note>()
+        val sampleRate = 44100f
+        val bufferSize = 2048
+        val overlap = 0
 
-        // Simulate note detection with a simple melody
-        // In reality, this would analyze the audio spectrum and detect pitches
+        // --- 核心修复开始 ---
+        // 不使用 AudioDispatcherFactory.fromPipe，改用自定义文件流
+        // 我们确信文件是 PCM 16bit, 单声道, Little Endian (由 FFmpeg 保证)
+        val format = TarsosDSPAudioFormat(sampleRate, 16, 1, true, false)
+        val audioStream = AndroidWavInputStream(wavFile, format)
+        val dispatcher = AudioDispatcher(audioStream, bufferSize, overlap)
+        // --- 核心修复结束 ---
 
-        // Generate a simple C major scale as demonstration
-        val cMajorScale = listOf(60, 62, 64, 65, 67, 69, 71, 72) // C4 to C5
-        var currentTime = 0.0
+        var currentNoteStart = -1.0
+        var currentMidiPitch = -1
 
-        for (i in cMajorScale.indices) {
-            val pitch = cMajorScale[i]
-            val note = Note(
-                pitch = pitch,
-                startTime = currentTime,
-                duration = 0.5,
-                velocity = 80
-            )
-            notes.add(note)
-            currentTime += 0.5
+        val pitchHandler = PitchDetectionHandler { result: PitchDetectionResult, audioEvent: AudioEvent ->
+            val pitchInHz = result.pitch
+            val timeStamp = audioEvent.timeStamp
 
-            progressCallback?.invoke(0.3f + (i.toFloat() / cMajorScale.size) * 0.6f)
+            // 更新进度
+            if (timeStamp % 0.5 < 0.05) {
+                val progress = 0.2f + (timeStamp.toFloat() / 180.0f).coerceAtMost(0.7f)
+                progressCallback?.invoke(progress)
+            }
+
+            if (pitchInHz != -1f) {
+                val midiPitch = frequencyToMidi(pitchInHz.toDouble())
+
+                if (midiPitch != currentMidiPitch) {
+                    if (currentMidiPitch != -1 && (timeStamp - currentNoteStart) > 0.1) {
+                        detectedNotes.add(Note(currentMidiPitch, currentNoteStart, timeStamp - currentNoteStart, 90))
+                    }
+                    currentMidiPitch = midiPitch
+                    currentNoteStart = timeStamp
+                }
+            } else {
+                if (currentMidiPitch != -1 && (timeStamp - currentNoteStart) > 0.1) {
+                    detectedNotes.add(Note(currentMidiPitch, currentNoteStart, timeStamp - currentNoteStart, 90))
+                    currentMidiPitch = -1
+                }
+            }
         }
 
-        // Add some harmony
-        currentTime = 0.0
-        for (i in 0..3) {
-            val chord = listOf(
-                Note(60 + i * 2, currentTime, 1.0, 70),
-                Note(64 + i * 2, currentTime, 1.0, 70),
-                Note(67 + i * 2, currentTime, 1.0, 70)
-            )
-            notes.addAll(chord)
-            currentTime += 1.0
-        }
+        dispatcher.addAudioProcessor(PitchProcessor(
+            PitchProcessor.PitchEstimationAlgorithm.YIN,
+            sampleRate,
+            bufferSize,
+            pitchHandler
+        ))
 
-        return notes.sortedBy { it.startTime }
+        dispatcher.run()
+
+        return detectedNotes
     }
 
-    /**
-     * Convert frequency (Hz) to MIDI pitch number
-     */
     private fun frequencyToMidi(frequency: Double): Int {
-        return round(69 + 12 * log2(frequency / 440.0)).toInt()
+        if (frequency <= 0) return 0
+        return (69 + 12 * (ln(frequency / 440.0) / ln(2.0))).roundToInt()
     }
 
     /**
-     * Convert MIDI pitch to frequency (Hz)
+     * 自定义 WAV 输入流，用于 Android 平台
+     * 简单地跳过 WAV 头部 (44字节)，直接读取 PCM 数据
      */
-    private fun midiToFrequency(midi: Int): Double {
-        return 440.0 * 2.0.pow((midi - 69) / 12.0)
+    private class AndroidWavInputStream(file: File, private val format: TarsosDSPAudioFormat) : TarsosDSPAudioInputStream {
+        private val fileInputStream = FileInputStream(file)
+
+        init {
+            // 跳过标准的 WAV 头部 (44 bytes)
+            // 既然是我们自己用 FFmpeg 生成的标准 WAV，可以直接跳过
+            fileInputStream.skip(44)
+        }
+
+        override fun skip(bytesToSkip: Long): Long {
+            return fileInputStream.skip(bytesToSkip)
+        }
+
+        override fun read(b: ByteArray?, off: Int, len: Int): Int {
+            return fileInputStream.read(b, off, len)
+        }
+
+        override fun close() {
+            fileInputStream.close()
+        }
+
+        override fun getFormat(): TarsosDSPAudioFormat {
+            return format
+        }
+
+        override fun getFrameLength(): Long {
+            return -1 // 未知长度，不影响分析
+        }
     }
 }

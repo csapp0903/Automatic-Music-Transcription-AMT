@@ -76,7 +76,18 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Audio processing
+    // 1. 确保 Mobile FFmpeg 存在 (用于 MP3 -> WAV 转码)
     implementation("com.arthenica:mobile-ffmpeg-full:4.4")
+
+
+    // 添加 Gson 用于序列化音符数据传给 HTML
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // 添加 TarsosDSP 库 (音频分析)
+    // 注意：TarsosDSP 通常需要下载 jar 包放入 libs 目录，或者使用第三方镜像
+    // 这里为了方便，我们假设你使用 JitPack 或者你手动下载了 jar
+    // 如果无法解析，请访问 https://0110.be/releases/TarsosDSP/TarsosDSP-latest/ 下载 TarsosDSP-Android-latest.jar 放入 app/libs/ 文件夹
+    implementation(files("libs/TarsosDSP-Android-latest.jar"))
 
     // MIDI library
     // implementation("com.leff:midi:1.0")
