@@ -17,15 +17,15 @@ plugins {
     id("org.jetbrains.kotlin.android") version "1.9.20" apply false
 }
 
-allprojects {
-    repositories {
-        // 阿里云镜像 - 优先使用
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
-        maven { url = uri("https://maven.aliyun.com/repository/central") }
-
-        // 备用官方源
-        google()
-        mavenCentral()
-    }
-}
+//allprojects {
+//    repositories {
+//        // 阿里云镜像 - 优先使用
+//        maven { url = uri("https://maven.aliyun.com/repository/google") }
+//        maven { url = uri("https://maven.aliyun.com/repository/public") }
+//        maven { url = uri("https://maven.aliyun.com/repository/central") }
+//
+//        // 备用官方源
+//        google()
+//        mavenCentral()
+//    }
+//}

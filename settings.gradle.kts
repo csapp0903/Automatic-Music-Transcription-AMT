@@ -23,6 +23,7 @@ dependencyResolutionManagement {
         // 备用官方源
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 

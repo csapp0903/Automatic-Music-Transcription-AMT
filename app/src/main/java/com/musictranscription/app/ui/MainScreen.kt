@@ -85,7 +85,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         Text("选择音频文件")
                     }
 
-                    HorizontalDivider()
+                    // HorizontalDivider()
+                    Divider()
 
                     // URL input
                     OutlinedTextField(
@@ -205,7 +206,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             Text(state.message)
                             if (progress > 0) {
                                 LinearProgressIndicator(
-                                    progress = { progress },
+                                    // progress = { progress },
+                                    progress = progress,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 Text("${(progress * 100).toInt()}%")

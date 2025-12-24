@@ -79,7 +79,9 @@ dependencies {
     implementation("com.arthenica:mobile-ffmpeg-full:4.4")
 
     // MIDI library
-    implementation("com.leff:midi:1.0")
+    // implementation("com.leff:midi:1.0")
+    // implementation("com.github.crowjdh:AndroidMidiLibrary:master-SNAPSHOT")
+    implementation("com.github.LeffelMania:android-midi-lib:master-SNAPSHOT")
 
     // PDF generation
     implementation("com.itextpdf:itext7-core:7.2.5")

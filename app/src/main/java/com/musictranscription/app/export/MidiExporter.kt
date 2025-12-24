@@ -35,10 +35,16 @@ class MidiExporter {
             tempoTrack.insertEvent(tempo)
 
             // Set time signature
+//            val (numerator, denominator) = score.timeSignature
+//            val timeSignature = TimeSignature()
+//            timeSignature.numerator = numerator
+//            timeSignature.realDenominator = denominator
+//            tempoTrack.insertEvent(timeSignature)
+            // Set time signature
             val (numerator, denominator) = score.timeSignature
             val timeSignature = TimeSignature()
-            timeSignature.numerator = numerator
-            timeSignature.realDenominator = denominator
+            // 使用专门的方法设置拍号，后两个参数使用默认值即可
+            timeSignature.setTimeSignature(numerator, denominator, TimeSignature.DEFAULT_METER, TimeSignature.DEFAULT_DIVISION)
             tempoTrack.insertEvent(timeSignature)
 
             // Resolution (ticks per quarter note)
