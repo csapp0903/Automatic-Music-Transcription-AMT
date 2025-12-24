@@ -1,15 +1,38 @@
 *.iml
 .gradle
 /local.properties
+local.properties
 /.idea/
 .DS_Store
 /build
 /captures
 .externalNativeBuild
 .cxx
-local.properties
 *.apk
 *.ap_
 *.aab
 /app/release/
 /app/debug/
+*.log
+build.log
+
+# Gradle cache
+.gradle/
+build/
+
+# Android Studio
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Keystore files
+*.jks
+*.keystore
+
+# External native build folder
+.externalNativeBuild
+.cxx/
+
+# NDK
+obj/
