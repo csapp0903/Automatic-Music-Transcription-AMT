@@ -1,0 +1,17 @@
+## This file is a template for local.properties
+## Copy this file to local.properties and update the SDK path
+
+## This file must *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
+
+# Location of the Android SDK
+# For Windows: sdk.dir=C\:\\Users\\YourName\\AppData\\Local\\Android\\Sdk
+# For macOS: sdk.dir=/Users/YourName/Library/Android/sdk
+# For Linux: sdk.dir=/home/YourName/Android/Sdk
+sdk.dir=/path/to/your/android-sdk
+
+# Uncomment and set proxy if needed
+# systemProp.http.proxyHost=127.0.0.1
+# systemProp.http.proxyPort=1080
+# systemProp.https.proxyHost=127.0.0.1
+# systemProp.https.proxyPort=1080
